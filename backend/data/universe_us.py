@@ -1,0 +1,4 @@
+US_UNIVERSE = [
+    "AAPL","MSFT","GOOGL","AMZN","META",
+    "NVDA","TSLA","NFLX","AMD","INTC"
+]
