@@ -1,7 +1,7 @@
 import yfinance as yf
 from utils.indicators import rsi
 from core.gpt_analyst import generate_ai_analysis
-
+from core.consensus_engine import run_multi_ai
 
 def analyze_stock(ticker):
 
@@ -64,6 +64,9 @@ def analyze_stock(ticker):
         ai = generate_ai_analysis(base_data)
 
         base_data["ai_analysis"] = ai
+        # inside analyze_stock() before return:
+
+        base_data["ai_consensus"] = run_multi_ai(base_data)
 
         return base_data
 
