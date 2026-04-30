@@ -1,8 +1,14 @@
 import yfinance as yf
+
 from utils.indicators import rsi
 from core.consensus_engine import run_multi_ai
-from core.ai_cache import get_cache, set_cache
-from core.consensus_engine import run_multi_ai
+
+# ✅ SAFE IMPORT (cache layer)
+try:
+    from core.ai_cache import get_cache, set_cache
+    CACHE_ENABLED = True
+except Exception:
+    CACHE_ENABLED = False
 
 
 def analyze_stock(ticker):
@@ -37,7 +43,7 @@ def analyze_stock(ticker):
         sector = info.get("sector", "Unknown")
 
         # ---------------------------
-        # SCORE ENGINE (0–100)
+        # SCORE ENGINE
         # ---------------------------
         score = 50
 
@@ -60,7 +66,7 @@ def analyze_stock(ticker):
         score = max(0, min(100, score))
 
         # ---------------------------
-        # BASE STRUCTURE
+        # BASE DATA STRUCTURE
         # ---------------------------
         base_data = {
             "ticker": ticker,
@@ -87,27 +93,32 @@ def analyze_stock(ticker):
         }
 
         # ---------------------------
-        # 🧠 AI ANALYST LAYER (MULTI AI)
+        # 🧠 AI + CACHE LAYER (SAFE)
         # ---------------------------
+        cache_key = f"ai:{ticker}"
+
         try:
-            cache_key = f"ai:{ticker}:{round(price,2)}"
+            if CACHE_ENABLED:
+                cached = get_cache(cache_key)
 
-cached = get_cache(cache_key)
+                if cached:
+                    base_data["ai_analysis"] = cached
+                    base_data["cached"] = True
+                else:
+                    ai_result = run_multi_ai(base_data)
+                    base_data["ai_analysis"] = ai_result
+                    base_data["cached"] = False
+                    set_cache(cache_key, ai_result)
+            else:
+                # fallback if cache module missing
+                base_data["ai_analysis"] = run_multi_ai(base_data)
+                base_data["cached"] = False
 
-if cached:
-    base_data["ai_analysis"] = cached
-    base_data["cached"] = True
-else:
-    ai_result = run_multi_ai(base_data)
-
-    base_data["ai_analysis"] = ai_result
-    base_data["cached"] = False
-
-    set_cache(cache_key, ai_result)
         except Exception as e:
             base_data["ai_analysis"] = {
-                "error": f"AI analysis failed: {str(e)}"
+                "error": f"AI layer failed: {str(e)}"
             }
+            base_data["cached"] = False
 
         return base_data
 
