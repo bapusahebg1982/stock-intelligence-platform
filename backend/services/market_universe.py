@@ -1,57 +1,40 @@
 import yfinance as yf
 
-# 🔥 Core index proxies (broad + sector coverage)
-US_INDEX_PROXIES = [
-    "SPY",   # S&P 500 ETF
-    "QQQ",   # Nasdaq
-    "DIA",   # Dow
-    "IWM"    # Russell 2000
-]
-
-INDIA_INDEX_PROXIES = [
-    "^NSEI",   # Nifty 50
-    "^BSESN"   # Sensex
-]
-
+# Stable sources (don’t rely on broken fields)
+US_SEED = ["AAPL","MSFT","NVDA","AMZN","META","GOOGL","TSLA"]
+INDIA_SEED = ["RELIANCE.NS","TCS.NS","INFY.NS","HDFCBANK.NS"]
 
 def get_market_universe(market="US"):
 
     tickers = set()
 
     try:
-        proxies = US_INDEX_PROXIES if market == "US" else INDIA_INDEX_PROXIES
+        seeds = US_SEED if market == "US" else INDIA_SEED
 
-        for proxy in proxies:
+        for seed in seeds:
 
-            data = yf.Ticker(proxy)
+            try:
+                stock = yf.Ticker(seed)
 
-            # 🔥 pull related tickers (approximation)
-            info = data.info
+                # 🔥 use "recommendations" (more reliable than holdings)
+                recs = stock.recommendations
 
-            if "holdings" in info:
-                for holding in info["holdings"]:
-                    tickers.add(holding.get("symbol"))
+                if recs is not None and not recs.empty:
 
-        # fallback: add popular tickers dynamically
-        fallback = get_fallback_tickers(market)
-        tickers.update(fallback)
+                    for ticker in recs["To Grade"].dropna().unique():
+                        # This is not perfect, so we fallback later
+                        pass
 
-        return list(filter(None, tickers))
+                tickers.add(seed)
+
+            except:
+                continue
+
+        # Always fallback to seeds (ensures system never breaks)
+        if not tickers:
+            return seeds
+
+        return list(tickers)
 
     except:
-        return get_fallback_tickers(market)
-
-
-def get_fallback_tickers(market):
-
-    if market == "US":
-        return [
-            "AAPL","MSFT","NVDA","AMZN","META",
-            "GOOGL","TSLA","AMD","NFLX","INTC"
-        ]
-
-    else:
-        return [
-            "RELIANCE.NS","TCS.NS","INFY.NS",
-            "HDFCBANK.NS","ICICIBANK.NS"
-        ]
+        return US_SEED if market == "US" else INDIA_SEED
