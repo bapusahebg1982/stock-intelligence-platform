@@ -1,15 +1,12 @@
 from core.stock_analyzer import analyze_stock
-from services.market_universe import get_market_universe
+from services.universe_service import get_universe
 
 
 def scan_market(market="US", price_cap=None):
 
-    universe = get_market_universe(market)
+    universe = get_universe(market, limit=50)
 
     results = []
-
-    # 🔥 LIMIT to avoid Render timeout
-    universe = universe[:25]
 
     for ticker in universe:
 
@@ -19,8 +16,8 @@ def scan_market(market="US", price_cap=None):
             if not stock:
                 continue
 
-            price = stock.get("price")
-            high = stock.get("high_low", {}).get("1y_high")
+            price = stock["price"]
+            high = stock["high_low"]["1y_high"]
 
             if not price or not high:
                 continue
@@ -30,19 +27,18 @@ def scan_market(market="US", price_cap=None):
 
             drop = price / high
 
-            if drop < 0.75 and stock.get("score", 0) >= 60:
+            if drop < 0.75 and stock["score"] >= 60:
 
                 results.append({
                     "ticker": ticker,
                     "price": price,
                     "drop_pct": round((1 - drop) * 100, 2),
-                    "sector": stock.get("sector"),
-                    "score": stock.get("score"),
+                    "sector": stock["sector"],
+                    "score": stock["score"],
                     "reason": build_reason(stock)
                 })
 
-        except Exception as e:
-            # 🔥 DO NOT crash entire API
+        except:
             continue
 
     return sorted(results, key=lambda x: x["score"], reverse=True)
@@ -52,20 +48,13 @@ def build_reason(stock):
 
     reasons = []
 
-    try:
-        if stock["technicals"]["rsi"] < 35:
-            reasons.append("Oversold (RSI low)")
+    if stock["technicals"]["rsi"] < 35:
+        reasons.append("Oversold")
 
-        if stock["technicals"]["trend"] == "Bearish":
-            reasons.append("Below MA50 (reversal zone)")
+    if stock["technicals"]["trend"] == "Bearish":
+        reasons.append("Below MA50")
 
-        if stock["fundamentals"]["revenue_growth"]:
-            reasons.append("Revenue still growing")
-
-        if stock["score"] >= 70:
-            reasons.append("Strong fundamentals despite drawdown")
-
-    except:
-        pass
+    if stock["fundamentals"]["revenue_growth"]:
+        reasons.append("Growth intact")
 
     return reasons
