@@ -1,6 +1,8 @@
 import yfinance as yf
 from utils.indicators import rsi
 from core.consensus_engine import run_multi_ai
+from core.ai_cache import get_cache, set_cache
+from core.consensus_engine import run_multi_ai
 
 
 def analyze_stock(ticker):
@@ -88,7 +90,20 @@ def analyze_stock(ticker):
         # 🧠 AI ANALYST LAYER (MULTI AI)
         # ---------------------------
         try:
-            base_data["ai_analysis"] = run_multi_ai(base_data)
+            cache_key = f"ai:{ticker}:{round(price,2)}"
+
+cached = get_cache(cache_key)
+
+if cached:
+    base_data["ai_analysis"] = cached
+    base_data["cached"] = True
+else:
+    ai_result = run_multi_ai(base_data)
+
+    base_data["ai_analysis"] = ai_result
+    base_data["cached"] = False
+
+    set_cache(cache_key, ai_result)
         except Exception as e:
             base_data["ai_analysis"] = {
                 "error": f"AI analysis failed: {str(e)}"
