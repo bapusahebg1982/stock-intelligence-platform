@@ -26,7 +26,8 @@ def analyze_stock(ticker):
 
             "technicals": {
                 "rsi": round(rsi_val, 2),
-                "ma50": round(ma50, 2)
+                "ma50": round(ma50, 2),
+                "trend": "Bullish" if price > ma50 else "Bearish"
             },
 
             "fundamentals": {
@@ -40,5 +41,5 @@ def analyze_stock(ticker):
             }
         }
 
-    except:
-        return {"error": "Failed to fetch"}
+    except Exception as e:
+        return {"error": str(e)}
