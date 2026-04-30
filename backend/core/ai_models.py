@@ -17,7 +17,7 @@ def groq_analysis(prompt):
 
     try:
         res = groq_client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5
         )
@@ -31,7 +31,7 @@ def groq_analysis(prompt):
 def gemini_analysis(prompt):
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
         payload = {
             "contents": [
@@ -42,6 +42,10 @@ def gemini_analysis(prompt):
         response = requests.post(url, json=payload, timeout=20)
 
         data = response.json()
+
+        # 🔥 SAFE CHECK (IMPORTANT FIX)
+        if "candidates" not in data:
+            return f"ERROR: {data}"
 
         return data["candidates"][0]["content"]["parts"][0]["text"]
 
