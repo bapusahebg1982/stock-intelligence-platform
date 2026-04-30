@@ -11,10 +11,18 @@ def get_universe():
 
     global CACHE, LAST_UPDATED
 
-    if CACHE and (time.time() - LAST_UPDATED < TTL):
+    try:
+        if CACHE and (time.time() - LAST_UPDATED < TTL):
+            return CACHE
+
+        CACHE = build_universe()
+        LAST_UPDATED = time.time()
+
         return CACHE
 
-    CACHE = build_universe()
-    LAST_UPDATED = time.time()
-
-    return CACHE
+    except Exception:
+        # 🔥 NEVER FAIL — return fallback
+        return {
+            "US": ["AAPL", "MSFT", "NVDA"],
+            "INDIA": ["RELIANCE.NS", "TCS.NS"]
+        }
