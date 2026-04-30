@@ -1,5 +1,10 @@
 from fastapi import APIRouter
 from scanners.beaten_down import scan_market
+from services.universe_service import refresh_universe
+
+@router.get("/refresh-universe")
+def refresh():
+    return refresh_universe()
 
 router = APIRouter()
 
