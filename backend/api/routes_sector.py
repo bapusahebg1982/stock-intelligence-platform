@@ -1,32 +1,28 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from core.sector_engine import get_sector_opportunities
+from core.universe_cache import get_universe
 
 router = APIRouter()
 
 
-# ----------------------------
-# SECTOR OPPORTUNITIES API
-# ----------------------------
 @router.get("/sector-opportunities")
-def sector_opportunities(
-    ticker: str,
-):
+def sector_opportunities(ticker: str):
 
-    universe = [
-        "AAPL", "MSFT", "GOOGL", "META", "AMZN",
-        "NVDA", "TSLA",
-        "IBM", "ORCL", "INTC",
-        "INFY.NS", "TCS.NS", "RELIANCE.NS"
-    ]
+    universe = get_universe()
+
+    market = "INDIA" if ".NS" in ticker else "US"
+
+    tickers = universe.get(market, [])
 
     data = get_sector_opportunities(
-        universe=universe,
+        universe=tickers,
         base_ticker=ticker
     )
 
     return {
-        "base_ticker": ticker,
+        "ticker": ticker,
+        "market": market,
         "count": len(data),
-        "results": data
+        "results": data[:10]  # top 10 only
     }
