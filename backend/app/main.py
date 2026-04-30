@@ -10,6 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routes_stock import router as stock_router
 from api.routes_scanner import router as scanner_router
 
+from database.db import engine
+from database.models import Base
+
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 
 app.add_middleware(
