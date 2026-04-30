@@ -11,16 +11,19 @@ def scan_market(market="US", price_cap=None):
 
         stock = analyze_stock(ticker)
 
-        if "error" in stock:
+        if not stock or "error" in stock:
             continue
 
         price = stock["price"]
         high = stock["high_low"]["1y_high"]
 
+        if not high:
+            continue
+
         if price_cap and price > price_cap:
             continue
 
-        drop = price / high if high else 1
+        drop = price / high
 
         if drop < 0.7:
 
@@ -28,7 +31,12 @@ def scan_market(market="US", price_cap=None):
                 "ticker": ticker,
                 "price": price,
                 "drop_pct": round((1 - drop) * 100, 2),
-                "sector": stock["sector"]
+                "sector": stock["sector"],
+                "reason": [
+                    "Trading significantly below 1Y high",
+                    "Potential value zone",
+                    "Watch for reversal confirmation"
+                ]
             })
 
     return sorted(results, key=lambda x: x["drop_pct"], reverse=True)
