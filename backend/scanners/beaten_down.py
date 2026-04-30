@@ -1,60 +1,76 @@
-from core.stock_analyzer import analyze_stock
-from services.universe_service import get_universe
+import yfinance as yf
 
 
-def scan_market(market="US", price_cap=None):
+def calculate_drawdown(high, price):
 
-    universe = get_universe(market, limit=50)
+    if not high or not price:
+        return 0
+
+    return ((high - price) / high) * 100
+
+
+def is_beaten_down(stock_data):
+
+    price = stock_data["price"]
+    high = stock_data["high_52w"]
+    pe = stock_data["pe"]
+
+    drawdown = calculate_drawdown(high, price)
+
+    score = 0
+
+    # 🔥 core logic
+    if drawdown > 30:
+        score += 40
+
+    if pe and pe < 20:
+        score += 20
+
+    if stock_data.get("growth") and stock_data["growth"] > 0:
+        score += 20
+
+    if stock_data.get("roe") and stock_data["roe"] > 10:
+        score += 20
+
+    return {
+        "is_beaten_down": score >= 60,
+        "score": score,
+        "drawdown_pct": round(drawdown, 2)
+    }
+
+
+def scan_beaten_down(universe, market, max_price=None):
 
     results = []
 
-    for ticker in universe:
+    for t in universe:
 
-        try:
-            stock = analyze_stock(ticker)
+        stock = yf.Ticker(t)
+        info = stock.info or {}
 
-            if not stock:
+        price = info.get("currentPrice")
+        high = info.get("fiftyTwoWeekHigh")
+
+        data = {
+            "ticker": t,
+            "price": price,
+            "high_52w": high,
+            "pe": info.get("trailingPE"),
+            "growth": info.get("revenueGrowth"),
+            "roe": info.get("returnOnEquity"),
+            "market": market
+        }
+
+        beat = is_beaten_down(data)
+
+        if beat["is_beaten_down"]:
+
+            if max_price and price and price > max_price:
                 continue
 
-            price = stock["price"]
-            high = stock["high_low"]["1y_high"]
-
-            if not price or not high:
-                continue
-
-            if price_cap and price > price_cap:
-                continue
-
-            drop = price / high
-
-            if drop < 0.75 and stock["score"] >= 60:
-
-                results.append({
-                    "ticker": ticker,
-                    "price": price,
-                    "drop_pct": round((1 - drop) * 100, 2),
-                    "sector": stock["sector"],
-                    "score": stock["score"],
-                    "reason": build_reason(stock)
-                })
-
-        except:
-            continue
+            results.append({
+                **data,
+                **beat
+            })
 
     return sorted(results, key=lambda x: x["score"], reverse=True)
-
-
-def build_reason(stock):
-
-    reasons = []
-
-    if stock["technicals"]["rsi"] < 35:
-        reasons.append("Oversold")
-
-    if stock["technicals"]["trend"] == "Bearish":
-        reasons.append("Below MA50")
-
-    if stock["fundamentals"]["revenue_growth"]:
-        reasons.append("Growth intact")
-
-    return reasons
