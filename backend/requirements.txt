@@ -3,3 +3,6 @@ uvicorn
 yfinance
 pandas
 numpy
+sqlalchemy
+requests
+beautifulsoup4
