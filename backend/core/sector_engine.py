@@ -1,8 +1,10 @@
 import yfinance as yf
-from core.market_utils import detect_market, clean_ticker
 
 
-def get_sector_data(ticker):
+# ----------------------------
+# SINGLE STOCK DATA FETCH
+# ----------------------------
+def get_stock_data(ticker):
 
     stock = yf.Ticker(ticker)
     info = stock.info or {}
@@ -10,52 +12,67 @@ def get_sector_data(ticker):
     return {
         "ticker": ticker,
         "sector": info.get("sector", "Unknown"),
-        "market": detect_market(ticker),
+        "market": "US" if ".NS" not in ticker else "INDIA",
         "price": info.get("currentPrice"),
         "pe": info.get("trailingPE"),
         "growth": info.get("revenueGrowth"),
-        "debt": info.get("debtToEquity"),
-        "roe": info.get("returnOnEquity")
+        "roe": info.get("returnOnEquity"),
+        "high_52w": info.get("fiftyTwoWeekHigh")
     }
 
 
-def find_sector_peers(universe, base_sector, market):
+# ----------------------------
+# SECTOR PEER SCORING
+# ----------------------------
+def score_stock(stock, base_price):
 
-    peers = []
+    score = 50
+
+    if stock["growth"] and stock["growth"] > 0:
+        score += 10
+
+    if stock["pe"] and stock["pe"] < 25:
+        score += 10
+
+    if stock["roe"] and stock["roe"] > 10:
+        score += 10
+
+    if stock["price"] and stock["price"] < base_price:
+        score += 10
+
+    return score
+
+
+# ----------------------------
+# MAIN FUNCTION (FIXED IMPORT)
+# ----------------------------
+def get_sector_opportunities(universe, base_ticker):
+
+    base = get_stock_data(base_ticker)
+
+    results = []
 
     for t in universe:
 
-        data = get_sector_data(t)
+        data = get_stock_data(t)
 
-        if data["sector"] == base_sector and data["market"] == market:
-            peers.append(data)
+        # 🚨 SAME MARKET FILTER (FIX YOUR EARLIER BUG)
+        if data["market"] != base["market"]:
+            continue
 
-    return peers
+        # SAME SECTOR ONLY
+        if data["sector"] != base["sector"]:
+            continue
+
+        data["score"] = score_stock(data, base["price"])
+
+        results.append(data)
+
+    return sorted(results, key=lambda x: x["score"], reverse=True)
 
 
-def rank_sector_opportunities(peers, base_price):
-
-    ranked = []
-
-    for p in peers:
-
-        score = 50
-
-        if p["growth"] and p["growth"] > 0:
-            score += 10
-
-        if p["pe"] and p["pe"] < 25:
-            score += 10
-
-        if p["roe"] and p["roe"] > 10:
-            score += 10
-
-        if p["price"] and p["price"] < base_price:
-            score += 10
-
-        ranked.append({
-            **p,
-            "score": score
-        })
-
-    return sorted(ranked, key=lambda x: x["score"], reverse=True)
+# ----------------------------
+# OPTIONAL BACKWARD COMPATIBILITY
+# ----------------------------
+def get_sector_data(ticker):
+    return get_stock_data(ticker)
