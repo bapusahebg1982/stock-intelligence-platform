@@ -1,15 +1,14 @@
 import json
-from core.ai_models import groq_analysis, gemini_analysis
+from core.model_router import call_groq, call_gemini
 
 
 def build_prompt(stock):
 
     return f"""
-You are a stock analyst.
+You are a professional stock analyst.
 
-Return STRICT JSON only:
+Return ONLY JSON:
 
-Stock:
 Ticker: {stock['ticker']}
 Price: {stock['price']}
 RSI: {stock['technicals']['rsi']}
@@ -18,11 +17,11 @@ PE: {stock['fundamentals']['pe']}
 
 Format:
 {{
- "recommendation": "BUY/HOLD/SELL",
- "short_term_target": number,
- "long_term_target": number,
- "reasoning": "simple explanation",
- "risk": "low/medium/high"
+  "recommendation": "BUY/HOLD/SELL",
+  "short_term_target": number,
+  "long_term_target": number,
+  "reasoning": "simple explanation",
+  "risk": "low/medium/high"
 }}
 """
 
@@ -51,15 +50,14 @@ def run_multi_ai(stock):
 
     prompt = build_prompt(stock)
 
-    groq_raw = groq_analysis(prompt)
-    gemini_raw = gemini_analysis(prompt)
+    groq_raw = call_groq(prompt)
+    gemini_raw = call_gemini(prompt)
 
     groq = safe_parse(groq_raw)
     gemini = safe_parse(gemini_raw)
 
-    rule = rule_based_ai(stock)
+    rule = rule_based(stock)
 
-    # 🔥 CONSENSUS LOGIC
     votes = [
         groq.get("recommendation"),
         gemini.get("recommendation"),
@@ -76,11 +74,9 @@ def run_multi_ai(stock):
     else:
         final = "HOLD"
 
-    confidence = round((buy + (3 - sell)) / 3 * 10, 1)
-
     return {
         "consensus": final,
-        "confidence": confidence,
+        "confidence": round((buy + (3 - sell)) / 3 * 10, 1),
 
         "targets": {
             "short_term": groq.get("short_term_target"),
@@ -90,7 +86,7 @@ def run_multi_ai(stock):
         "ai_votes": {
             "groq": groq.get("recommendation"),
             "gemini": gemini.get("recommendation"),
-            "rule_ai": rule.get("recommendation")
+            "rule": rule.get("recommendation")
         },
 
         "reasoning": {
@@ -103,22 +99,13 @@ def run_multi_ai(stock):
     }
 
 
-def rule_based_ai(stock):
+def rule_based(stock):
 
     score = stock.get("score", 50)
 
     if score > 70:
-        return {
-            "recommendation": "BUY",
-            "reasoning": "Strong fundamentals & technicals"
-        }
+        return {"recommendation": "BUY", "reasoning": "Strong fundamentals"}
     elif score < 40:
-        return {
-            "recommendation": "SELL",
-            "reasoning": "Weak signals detected"
-        }
+        return {"recommendation": "SELL", "reasoning": "Weak signals"}
 
-    return {
-        "recommendation": "HOLD",
-        "reasoning": "Neutral conditions"
-    }
+    return {"recommendation": "HOLD", "reasoning": "Neutral conditions"}
