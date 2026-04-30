@@ -1,5 +1,7 @@
 import yfinance as yf
 from utils.indicators import rsi
+from core.gpt_analyst import generate_ai_analysis
+
 
 def analyze_stock(ticker):
 
@@ -19,7 +21,22 @@ def analyze_stock(ticker):
 
         info = stock.info
 
-        return {
+        pe = info.get("trailingPE")
+        growth = info.get("revenueGrowth")
+
+        # scoring
+        score = 50
+
+        if rsi_val < 35:
+            score += 15
+        if price > ma50:
+            score += 10
+        if growth and growth > 0:
+            score += 10
+        if pe and pe < 30:
+            score += 10
+
+        base_data = {
             "ticker": ticker,
             "price": round(price, 2),
             "sector": info.get("sector", "Unknown"),
@@ -31,15 +48,24 @@ def analyze_stock(ticker):
             },
 
             "fundamentals": {
-                "pe": info.get("trailingPE"),
-                "revenue_growth": info.get("revenueGrowth")
+                "pe": pe,
+                "revenue_growth": growth
             },
 
             "high_low": {
                 "1y_high": high,
                 "1y_low": low
-            }
+            },
+
+            "score": score
         }
+
+        # 🔥 AI ANALYSIS
+        ai = generate_ai_analysis(base_data)
+
+        base_data["ai_analysis"] = ai
+
+        return base_data
 
     except Exception as e:
         return {"error": str(e)}
