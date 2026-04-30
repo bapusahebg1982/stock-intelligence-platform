@@ -1,17 +1,18 @@
 from core.stock_analyzer import analyze_stock
-from data.universe_us import US_UNIVERSE
-from data.universe_in import INDIA_UNIVERSE
+from services.market_universe import get_market_universe
+
 
 def scan_market(market="US", price_cap=None):
 
-    universe = US_UNIVERSE if market == "US" else INDIA_UNIVERSE
+    universe = get_market_universe(market)
+
     results = []
 
     for ticker in universe:
 
         stock = analyze_stock(ticker)
 
-        if not stock or "error" in stock:
+        if not stock:
             continue
 
         price = stock["price"]
@@ -25,18 +26,34 @@ def scan_market(market="US", price_cap=None):
 
         drop = price / high
 
-        if drop < 0.7:
+        if drop < 0.75 and stock["score"] >= 60:
 
             results.append({
                 "ticker": ticker,
                 "price": price,
                 "drop_pct": round((1 - drop) * 100, 2),
                 "sector": stock["sector"],
-                "reason": [
-                    "Trading significantly below 1Y high",
-                    "Potential value zone",
-                    "Watch for reversal confirmation"
-                ]
+                "score": stock["score"],
+                "reason": build_reason(stock)
             })
 
-    return sorted(results, key=lambda x: x["drop_pct"], reverse=True)
+    return sorted(results, key=lambda x: x["score"], reverse=True)
+
+
+def build_reason(stock):
+
+    reasons = []
+
+    if stock["technicals"]["rsi"] < 35:
+        reasons.append("Oversold (RSI low)")
+
+    if stock["technicals"]["trend"] == "Bearish":
+        reasons.append("Below MA50 (reversal zone)")
+
+    if stock["fundamentals"]["revenue_growth"]:
+        reasons.append("Revenue still growing")
+
+    if stock["score"] >= 70:
+        reasons.append("Strong fundamentals despite drawdown")
+
+    return reasons
