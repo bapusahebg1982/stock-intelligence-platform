@@ -43,7 +43,9 @@ def call_gemini(prompt):
         payload = {
             "contents": [
                 {
-                    "parts": [{"text": prompt}]
+                    "parts": [
+                        {"text": prompt}
+                    ]
                 }
             ]
         }
@@ -51,7 +53,8 @@ def call_gemini(prompt):
         response = requests.post(url, json=payload, timeout=20)
         data = response.json()
 
-        # SAFE CHECK
+        print("GEMINI RESPONSE:", data)  # debug
+
         if "candidates" not in data:
             return f"ERROR: {data}"
 
