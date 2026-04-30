@@ -1,22 +1,32 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+
 from core.sector_engine import get_sector_opportunities
 
 router = APIRouter()
 
 
-@router.get("/sector/{ticker}")
-def sector_analysis(ticker: str, market: str = "US"):
+# ----------------------------
+# SECTOR OPPORTUNITIES API
+# ----------------------------
+@router.get("/sector-opportunities")
+def sector_opportunities(
+    ticker: str,
+):
 
-    try:
-        result = get_sector_opportunities(ticker, market)
+    universe = [
+        "AAPL", "MSFT", "GOOGL", "META", "AMZN",
+        "NVDA", "TSLA",
+        "IBM", "ORCL", "INTC",
+        "INFY.NS", "TCS.NS", "RELIANCE.NS"
+    ]
 
-        return {
-            "status": "success",
-            "data": result
-        }
+    data = get_sector_opportunities(
+        universe=universe,
+        base_ticker=ticker
+    )
 
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+    return {
+        "base_ticker": ticker,
+        "count": len(data),
+        "results": data
+    }
