@@ -9,27 +9,22 @@ def calculate_drawdown(high, price):
     return ((high - price) / high) * 100
 
 
-def is_beaten_down(stock_data):
-
-    price = stock_data["price"]
-    high = stock_data["high_52w"]
-    pe = stock_data["pe"]
+def is_beaten_down(price, high, pe, growth, roe):
 
     drawdown = calculate_drawdown(high, price)
 
     score = 0
 
-    # 🔥 core logic
     if drawdown > 30:
         score += 40
 
     if pe and pe < 20:
         score += 20
 
-    if stock_data.get("growth") and stock_data["growth"] > 0:
+    if growth and growth > 0:
         score += 20
 
-    if stock_data.get("roe") and stock_data["roe"] > 10:
+    if roe and roe > 10:
         score += 20
 
     return {
@@ -39,38 +34,48 @@ def is_beaten_down(stock_data):
     }
 
 
-def scan_beaten_down(universe, market, max_price=None):
+# ✅ THIS IS WHAT YOUR ROUTER EXPECTS
+def scan_market(universe, max_price=None, market="US"):
 
     results = []
 
-    for t in universe:
+    for ticker in universe:
 
-        stock = yf.Ticker(t)
-        info = stock.info or {}
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info or {}
 
-        price = info.get("currentPrice")
-        high = info.get("fiftyTwoWeekHigh")
+            price = info.get("currentPrice")
+            high = info.get("fiftyTwoWeekHigh")
 
-        data = {
-            "ticker": t,
-            "price": price,
-            "high_52w": high,
-            "pe": info.get("trailingPE"),
-            "growth": info.get("revenueGrowth"),
-            "roe": info.get("returnOnEquity"),
-            "market": market
-        }
-
-        beat = is_beaten_down(data)
-
-        if beat["is_beaten_down"]:
-
-            if max_price and price and price > max_price:
+            if not price or not high:
                 continue
 
-            results.append({
-                **data,
-                **beat
-            })
+            if max_price and price > max_price:
+                continue
+
+            result = is_beaten_down(
+                price=price,
+                high=high,
+                pe=info.get("trailingPE"),
+                growth=info.get("revenueGrowth"),
+                roe=info.get("returnOnEquity")
+            )
+
+            if result["is_beaten_down"]:
+
+                results.append({
+                    "ticker": ticker,
+                    "market": market,
+                    "price": price,
+                    "high_52w": high,
+                    "pe": info.get("trailingPE"),
+                    "growth": info.get("revenueGrowth"),
+                    "roe": info.get("returnOnEquity"),
+                    **result
+                })
+
+        except Exception:
+            continue
 
     return sorted(results, key=lambda x: x["score"], reverse=True)
