@@ -38,11 +38,15 @@ def call_groq(prompt):
 def call_gemini(prompt):
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
         payload = {
             "contents": [
-                {"parts": [{"text": prompt}]}
+                {
+                    "parts": [
+                        {"text": prompt}
+                    ]
+                }
             ]
         }
 
@@ -50,6 +54,7 @@ def call_gemini(prompt):
 
         data = response.json()
 
+        # 🔥 SAFE CHECK
         if "candidates" not in data:
             return f"ERROR: {data}"
 
