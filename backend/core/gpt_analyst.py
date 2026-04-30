@@ -1,4 +1,5 @@
 import os
+import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -15,15 +16,18 @@ def generate_ai_analysis(stock):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a professional stock analyst."},
+                {
+                    "role": "system",
+                    "content": "You are a professional stock analyst. Always return STRICT JSON only."
+                },
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7
+            temperature=0.6
         )
 
         text = response.choices[0].message.content
 
-        return parse_output(text)
+        return parse_json(text)
 
     except Exception as e:
         return {
@@ -31,11 +35,13 @@ def generate_ai_analysis(stock):
         }
 
 
+# 🔥 STRONG PROMPT (forces JSON)
 def build_prompt(stock):
 
     return f"""
-Analyze this stock and give investment recommendation:
+Analyze the stock below and return ONLY JSON.
 
+Stock Data:
 Ticker: {stock['ticker']}
 Price: {stock['price']}
 RSI: {stock['technicals']['rsi']}
@@ -45,21 +51,47 @@ Revenue Growth: {stock['fundamentals']['revenue_growth']}
 1Y High: {stock['high_low']['1y_high']}
 1Y Low: {stock['high_low']['1y_low']}
 
-Provide:
-1. Recommendation (BUY / HOLD / SELL)
-2. Target price (short term)
-3. Target price (long term)
-4. Timeframe
-5. Reasoning (simple + professional)
-6. Risks
+Return STRICT JSON in this exact format:
 
-Return in JSON format.
+{{
+  "recommendation": "BUY or HOLD or SELL",
+  "short_term_target": number,
+  "long_term_target": number,
+  "timeframe": "e.g. 3-6 months",
+  "reasoning": "simple explanation for retail investor",
+  "risks": "key risks",
+  "confidence": number (1-10)
+}}
+
+Rules:
+- No text outside JSON
+- Targets must be realistic numbers
+- Keep reasoning simple and clear
 """
-    
 
-def parse_output(text):
 
-    # 🔥 simple fallback parser (LLM may return text)
-    return {
-        "raw": text
-    }
+# 🔥 ROBUST PARSER
+def parse_json(text):
+
+    try:
+        # clean markdown if model returns ```json
+        text = text.strip()
+
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+
+        return json.loads(text)
+
+    except Exception:
+        # fallback (important in production)
+        return {
+            "recommendation": "UNKNOWN",
+            "short_term_target": None,
+            "long_term_target": None,
+            "timeframe": None,
+            "reasoning": text,
+            "risks": "Parsing failed",
+            "confidence": None
+        }
