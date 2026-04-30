@@ -2,12 +2,10 @@ from fastapi import APIRouter
 from scanners.beaten_down import scan_market
 from services.universe_service import refresh_universe
 
-@router.get("/refresh-universe")
-def refresh():
-    return refresh_universe()
-
 router = APIRouter()
 
+
+# 🔹 Beaten-down scanner
 @router.get("/scan/beaten-down")
 def beaten_down(market: str = "US", price_cap: float = None):
 
@@ -25,4 +23,23 @@ def beaten_down(market: str = "US", price_cap: float = None):
             "error": str(e),
             "market": market,
             "results": []
+        }
+
+
+# 🔹 Refresh market universe (DB)
+@router.get("/refresh-universe")
+def refresh():
+
+    try:
+        data = refresh_universe()
+
+        return {
+            "status": "success",
+            "data": data
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
         }
