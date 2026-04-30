@@ -1,45 +1,36 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+
 from scanners.beaten_down import scan_market
-from services.universe_service import refresh_universe
 
 router = APIRouter()
 
 
-# 🔹 Beaten-down scanner
-@router.get("/scan/beaten-down")
-def beaten_down(market: str = "US", price_cap: float = None):
+# ----------------------------
+# BEATEN DOWN STOCKS API
+# ----------------------------
+@router.get("/beaten-down")
+def beaten_down(
+    max_price: float = None,
+    market: str = "US"
+):
 
-    try:
-        results = scan_market(market, price_cap)
+    # ⚠️ TEMP UNIVERSAL LIST (replace later with scraper universe)
+    universe = [
+        "AAPL", "MSFT", "AMZN", "GOOGL", "META",
+        "TSLA", "NFLX", "NVDA",
+        "IBM", "INTC", "ORCL",
+        "INFY.NS", "TCS.NS", "RELIANCE.NS"
+    ]
 
-        return {
-            "market": market,
-            "count": len(results),
-            "results": results
-        }
+    data = scan_market(
+        universe=universe,
+        max_price=max_price,
+        market=market
+    )
 
-    except Exception as e:
-        return {
-            "error": str(e),
-            "market": market,
-            "results": []
-        }
-
-
-# 🔹 Refresh market universe (DB)
-@router.get("/refresh-universe")
-def refresh():
-
-    try:
-        data = refresh_universe()
-
-        return {
-            "status": "success",
-            "data": data
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+    return {
+        "market": market,
+        "max_price": max_price,
+        "count": len(data),
+        "results": data
+    }
