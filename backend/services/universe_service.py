@@ -7,34 +7,50 @@ def refresh_universe():
 
     db = SessionLocal()
 
-    # clear old
-    db.query(Stock).delete()
+    try:
+        # clear old data
+        db.query(Stock).delete()
 
-    # fetch new
-    us_tickers = scrape_sp500()
-    in_tickers = scrape_nifty500()
+        us_tickers = scrape_sp500()
+        in_tickers = scrape_nifty500()
 
-    for t in us_tickers:
-        db.add(Stock(ticker=t, market="US"))
+        # 🔥 fallback if scraping fails
+        if not us_tickers:
+            us_tickers = ["AAPL","MSFT","NVDA","AMZN"]
 
-    for t in in_tickers:
-        db.add(Stock(ticker=t, market="IN"))
+        if not in_tickers:
+            in_tickers = ["RELIANCE.NS","TCS.NS","INFY.NS"]
 
-    db.commit()
-    db.close()
+        for t in us_tickers:
+            db.add(Stock(ticker=t, market="US"))
 
-    return {
-        "US": len(us_tickers),
-        "IN": len(in_tickers)
-    }
+        for t in in_tickers:
+            db.add(Stock(ticker=t, market="IN"))
+
+        db.commit()
+
+        return {
+            "US": len(us_tickers),
+            "IN": len(in_tickers)
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+    finally:
+        db.close()
 
 
 def get_universe(market="US", limit=100):
 
     db = SessionLocal()
 
-    stocks = db.query(Stock).filter(Stock.market == market).limit(limit).all()
+    try:
+        stocks = db.query(Stock).filter(Stock.market == market).limit(limit).all()
+        return [s.ticker for s in stocks]
 
-    db.close()
+    except:
+        return []
 
-    return [s.ticker for s in stocks]
+    finally:
+        db.close()
