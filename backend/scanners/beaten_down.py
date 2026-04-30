@@ -1,41 +1,8 @@
 import yfinance as yf
+from core.ai_engine import generate_beaten_reason
 
 
-def calculate_drawdown(high, price):
-
-    if not high or not price:
-        return 0
-
-    return ((high - price) / high) * 100
-
-
-def is_beaten_down(price, high, pe, growth, roe):
-
-    drawdown = calculate_drawdown(high, price)
-
-    score = 0
-
-    if drawdown > 30:
-        score += 40
-
-    if pe and pe < 20:
-        score += 20
-
-    if growth and growth > 0:
-        score += 20
-
-    if roe and roe > 10:
-        score += 20
-
-    return {
-        "is_beaten_down": score >= 60,
-        "score": score,
-        "drawdown_pct": round(drawdown, 2)
-    }
-
-
-# ✅ THIS IS WHAT YOUR ROUTER EXPECTS
-def scan_market(universe, max_price=None, market="US"):
+def scan_market(universe):
 
     results = []
 
@@ -43,39 +10,30 @@ def scan_market(universe, max_price=None, market="US"):
 
         try:
             stock = yf.Ticker(ticker)
-            info = stock.info or {}
+            hist = stock.history(period="1y")
 
-            price = info.get("currentPrice")
-            high = info.get("fiftyTwoWeekHigh")
-
-            if not price or not high:
+            if hist.empty:
                 continue
 
-            if max_price and price > max_price:
+            high = hist["Close"].max()
+            current = hist["Close"].iloc[-1]
+
+            drawdown = ((high - current) / high) * 100
+
+            if drawdown < 20:
                 continue
 
-            result = is_beaten_down(
-                price=price,
-                high=high,
-                pe=info.get("trailingPE"),
-                growth=info.get("revenueGrowth"),
-                roe=info.get("returnOnEquity")
-            )
+            data = {
+                "ticker": ticker,
+                "price": current,
+                "drawdown_pct": round(drawdown, 2)
+            }
 
-            if result["is_beaten_down"]:
+            data["reason"] = generate_beaten_reason(data)
 
-                results.append({
-                    "ticker": ticker,
-                    "market": market,
-                    "price": price,
-                    "high_52w": high,
-                    "pe": info.get("trailingPE"),
-                    "growth": info.get("revenueGrowth"),
-                    "roe": info.get("returnOnEquity"),
-                    **result
-                })
+            results.append(data)
 
-        except Exception:
+        except:
             continue
 
-    return sorted(results, key=lambda x: x["score"], reverse=True)
+    return sorted(results, key=lambda x: x["drawdown_pct"], reverse=True)
