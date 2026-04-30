@@ -1,6 +1,7 @@
 import sys
 import os
 
+# 🔥 FIX: make backend root visible to Python (Render fix)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(stock_router)
 app.include_router(scanner_router)
+
 
 @app.get("/")
 def root():
