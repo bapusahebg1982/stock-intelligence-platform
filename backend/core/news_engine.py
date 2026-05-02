@@ -6,8 +6,10 @@ def fetch_news(ticker):
 
     try:
         url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
-
         res = requests.get(url, timeout=10)
+
+        if res.status_code != 200:
+            return []
 
         root = ET.fromstring(res.content)
         items = root.findall(".//item")
@@ -16,21 +18,14 @@ def fetch_news(ticker):
 
         for item in items[:5]:
             news.append({
-                "title": item.findtext("title", default=""),
-                "link": item.findtext("link", default=""),
-                "summary": "Market moving news related to stock.",
-                "sentiment": "NEUTRAL",
-                "impact": "May influence short-term price movement."
+                "title": item.findtext("title", ""),
+                "link": item.findtext("link", ""),
+                "summary": "Recent market news related to this stock.",
+                "impact": "May affect short-term movement."
             })
 
         return news
 
-    except:
-        # ✅ NEVER EMPTY
-        return [{
-            "title": "No recent news available",
-            "link": "#",
-            "summary": "No major updates for this stock.",
-            "sentiment": "NEUTRAL",
-            "impact": "Low impact currently."
-        }]
+    except Exception as e:
+        print("RSS error:", e)
+        return []
