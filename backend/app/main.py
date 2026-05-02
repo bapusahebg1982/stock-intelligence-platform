@@ -1,20 +1,10 @@
-import sys
-import os
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes_stock import router as stock_router
-from api.routes_scanner import router as scanner_router
 from api.routes_sector import router as sector_router
-
-from database.db import engine
-from database.models import Base
-
-# 🔥 Create DB tables
-Base.metadata.create_all(bind=engine)
+from api.routes_scanner import router as scanner_router
+from api.routes_news import router as news_router
 
 app = FastAPI()
 
@@ -27,10 +17,6 @@ app.add_middleware(
 )
 
 app.include_router(stock_router)
-app.include_router(scanner_router)
 app.include_router(sector_router)
-
-
-@app.get("/")
-def root():
-    return {"status": "Backend running"}
+app.include_router(scanner_router)
+app.include_router(news_router)
