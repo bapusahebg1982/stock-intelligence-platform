@@ -1,6 +1,6 @@
 import yfinance as yf
+from core.intelligence_engine import generate_beaten_insight
 
-# 🔥 Expanded universe (still lightweight, but better coverage)
 US_UNIVERSE = [
     "AAPL","MSFT","AMD","NVDA","TSLA","META",
     "F","INTC","PLTR","SOFI","NIO","LCID","RIVN"
@@ -26,14 +26,18 @@ def analyze_stock(ticker):
 
         drawdown = ((current - high) / high) * 100
 
-        # Only keep beaten-down
         if drawdown > -10:
             return None
 
-        # 🔥 timeframe
         peak_date = hist["High"].idxmax()
 
-        # 🔥 simple opportunity score
+        insight = generate_beaten_insight(
+            ticker,
+            round(current, 2),
+            round(drawdown, 2),
+            str(peak_date.date())
+        )
+
         score = abs(drawdown)
 
         return {
@@ -41,10 +45,14 @@ def analyze_stock(ticker):
             "price": round(current, 2),
             "drawdown_pct": round(drawdown, 2),
             "since": str(peak_date.date()),
-            "score": round(score, 2)
+            "reason_drop": insight.get("reason_drop"),
+            "reason_opportunity": insight.get("reason_opportunity"),
+            "confidence": insight.get("confidence"),
+            "score": score
         }
 
-    except:
+    except Exception as e:
+        print("Error:", ticker, e)
         return None
 
 
@@ -54,23 +62,18 @@ def scan_market(market="US", max_price=None):
 
     results = []
 
-    # 🔥 STEP 1: scan EVERYTHING
     for ticker in universe:
         data = analyze_stock(ticker)
-
         if data:
             results.append(data)
 
-    # 🔥 STEP 2: rank FIRST (best opportunities)
+    # rank first
     results.sort(key=lambda x: x["score"], reverse=True)
 
-    # 🔥 STEP 3: apply filter AFTER ranking
+    # apply filter AFTER ranking
     if max_price:
-        results = [r for r in results if r["price"] <= max_price]
-
-    # 🔥 STEP 4: if filter removes everything → fallback
-    if not results:
-        # return top opportunities anyway (no filter)
-        results = sorted(results, key=lambda x: x["score"], reverse=True)
+        filtered = [r for r in results if r["price"] <= max_price]
+        if filtered:
+            results = filtered
 
     return results[:20]
