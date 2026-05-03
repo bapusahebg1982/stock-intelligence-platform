@@ -5,4 +5,13 @@ router = APIRouter()
 
 @router.get("/analyze/{ticker}")
 def analyze(ticker: str):
-    return analyze_stock(ticker)
+
+    result = analyze_stock(ticker)
+
+    if not result:
+        return {
+            "ticker": ticker,
+            "error": "No data returned"
+        }
+
+    return result
