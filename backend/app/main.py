@@ -58,6 +58,10 @@ except Exception as e:
 # -----------------------------
 # ROOT + HEALTH
 # -----------------------------
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.get("/")
 def root():
     return {"status": "running"}
