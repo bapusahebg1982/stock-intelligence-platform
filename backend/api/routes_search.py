@@ -1,90 +1,38 @@
-from fastapi import APIRouter
-import yfinance as yf
-import difflib
-
-router = APIRouter()
-
-# ✅ REALISTIC UNIVERSAL STOCK MAP (India + US core)
-STOCK_DB = [
-    # US
-    {"name": "Apple", "ticker": "AAPL"},
-    {"name": "Microsoft", "ticker": "MSFT"},
-    {"name": "Amazon", "ticker": "AMZN"},
-    {"name": "Tesla", "ticker": "TSLA"},
-    {"name": "NVIDIA", "ticker": "NVDA"},
-
-    # India banks
-    {"name": "HDFC Bank", "ticker": "HDFCBANK.NS"},
-    {"name": "ICICI Bank", "ticker": "ICICIBANK.NS"},
-    {"name": "State Bank of India", "ticker": "SBIN.NS"},
-    {"name": "Axis Bank", "ticker": "AXISBANK.NS"},
-    {"name": "Bandhan Bank", "ticker": "BANDHANBNK.NS"},
-
-    # others
-    {"name": "Reliance Industries", "ticker": "RELIANCE.NS"},
-    {"name": "TCS", "ticker": "TCS.NS"},
-]
-
-
-def normalize(text):
-    return text.lower().strip()
-
-
-def score_match(query, name):
-    q = normalize(query)
-    n = normalize(name)
-
-    if q == n:
-        return 100
-    if q in n:
-        return 80
-    if any(word in n for word in q.split()):
-        return 60
-    return 0
-
-
-@router.get("/search")
 def search(q: str):
 
-    if not q:
-        return {"results": []}
+    q_norm = q.lower().strip()
 
-    q_norm = normalize(q)
+    best_match = None
+    best_score = 0
 
-    scored = []
-
-    # 🔥 STEP 1: score ALL matches (no early return)
     for stock in STOCK_DB:
-        score = score_match(q_norm, stock["name"])
 
-        if score > 0:
-            scored.append({**stock, "score": score})
+        name = stock["name"].lower()
+        ticker = stock["ticker"].lower()
 
-    # 🔥 STEP 2: sort by BEST match
-    scored.sort(key=lambda x: x["score"], reverse=True)
+        # 🔥 EXACT TICKER MATCH = HIGHEST PRIORITY
+        if q_norm.upper() == stock["ticker"].upper():
+            return {"results": [stock]}
 
-    # 🔥 STEP 3: strict top match only if strong confidence
-    if scored and scored[0]["score"] >= 60:
-        return {"results": scored[:5]}
+        score = 0
 
-    # 🔥 STEP 4: fallback ticker guessing
-    try:
-        guess = q.upper().replace(" ", "")
+        if q_norm == name:
+            score = 100
+        elif q_norm in name:
+            score = 80
+        elif any(word in name for word in q_norm.split()):
+            score = 50
 
-        for suffix in ["", ".NS"]:
-            ticker = guess + suffix
+        # 🔴 CRITICAL: penalize unrelated banks mixup
+        if "bank" in q_norm and "bank" in name:
+            score += 10
 
-            stock = yf.Ticker(ticker)
-            info = stock.info
+        if score > best_score:
+            best_score = score
+            best_match = stock
 
-            name = info.get("longName") or info.get("shortName")
-
-            if name:
-                return {
-                    "results": [{"name": name, "ticker": ticker}]
-                }
-
-    except:
-        pass
+    # only return if confident
+    if best_score >= 70:
+        return {"results": [best_match]}
 
     return {"results": []}
