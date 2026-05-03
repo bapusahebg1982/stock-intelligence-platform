@@ -6,6 +6,9 @@ import re
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
+# -----------------------------
+# UTIL: extract JSON safely
+# -----------------------------
 def extract_json(text):
     try:
         match = re.search(r"\{.*\}", text, re.DOTALL)
@@ -13,11 +16,14 @@ def extract_json(text):
             return json.loads(match.group())
     except:
         return None
+    return None
 
 
+# -----------------------------
+# GEMINI CALL (SAFE)
+# -----------------------------
 def call_gemini(prompt):
 
-    # ✅ HARD SAFETY: if no key → skip AI
     if not GEMINI_API_KEY:
         return None
 
@@ -38,6 +44,9 @@ def call_gemini(prompt):
         return None
 
 
+# -----------------------------
+# STOCK ANALYSIS
+# -----------------------------
 def generate_stock_analysis(stock):
 
     prompt = f"""
@@ -61,27 +70,73 @@ Format:
 """
 
     raw = call_gemini(prompt)
-
     parsed = extract_json(raw) if raw else None
 
     if parsed:
         return parsed
 
-    # ✅ ALWAYS RETURN VALID OUTPUT
+    # fallback
     price = stock.get("price") or 100
 
     return {
         "consensus": "HOLD",
         "confidence": "MEDIUM",
         "risk": "MEDIUM",
-        "simple_reason": "Stable stock with balanced risk and reward.",
+        "simple_reason": "Balanced risk and reward.",
         "targets": {
             "short_term": round(price * 1.05, 2),
             "long_term": round(price * 1.15, 2)
         },
         "detailed_reasoning": [
             "Valuation is moderate",
-            "Growth is steady",
+            "Growth is stable",
             "Momentum is neutral"
         ]
     }
+
+
+# -----------------------------
+# SECTOR REASONING (FIXED)
+# -----------------------------
+def generate_sector_reason(base, candidate):
+
+    prompt = f"""
+Explain in ONE short sentence why this stock may be better.
+
+Base:
+{base}
+
+Candidate:
+{candidate}
+"""
+
+    raw = call_gemini(prompt)
+
+    if raw:
+        return raw.strip()
+
+    return "Better relative valuation or growth potential."
+
+
+# -----------------------------
+# BEATEN DOWN REASONING (FIXED)
+# -----------------------------
+def generate_beaten_reason(stock):
+
+    prompt = f"""
+Explain simply:
+1. Why stock fell
+2. Why rebound possible
+
+Stock:
+{stock}
+
+Keep it short.
+"""
+
+    raw = call_gemini(prompt)
+
+    if raw:
+        return raw.strip()
+
+    return "Stock corrected significantly and may rebound if fundamentals hold."
