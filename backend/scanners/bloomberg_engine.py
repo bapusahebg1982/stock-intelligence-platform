@@ -144,4 +144,17 @@ def run_bloomberg_scan(market="US", max_price=None):
     # 🔥 Bloomberg-style ranking (best first)
     results.sort(key=lambda x: x["score"], reverse=True)
 
+if len(results) == 0:
+    return [{
+        "name": "Market scanning initializing...",
+        "ticker": "N/A",
+        "price": 0,
+        "drawdown_pct": 0,
+        "volatility": 0,
+        "score": 0,
+        "reason_drop": ["Universe loading or filters too strict"],
+        "reason_opportunity": ["Try removing price filter"],
+        "confidence": 0
+    }]
+    
     return results[:25]
