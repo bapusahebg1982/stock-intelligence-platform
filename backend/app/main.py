@@ -4,7 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# --- CORS ---
+# -----------------------------
+# CORS (VERY IMPORTANT)
+# -----------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,7 +15,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- SAFE IMPORTS ---
+# -----------------------------
+# SAFE ROUTER IMPORTS
+# -----------------------------
 try:
     from api.routes_stock import router as stock_router
     app.include_router(stock_router)
@@ -42,18 +46,27 @@ try:
 except Exception as e:
     print("❌ news router failed:", e)
 
+# ✅ NEW SEARCH ROUTER
+try:
+    from api.routes_search import router as search_router
+    app.include_router(search_router)
+    print("✅ search router loaded")
+except Exception as e:
+    print("❌ search router failed:", e)
 
+
+# -----------------------------
+# ROOT + HEALTH
+# -----------------------------
 @app.get("/")
 def root():
     return {"status": "running"}
-
 
 @app.on_event("startup")
 def startup_log():
     print("🚀 APP STARTED")
 
-    key = os.getenv("GEMINI_API_KEY")
-    if key:
+    if os.getenv("GEMINI_API_KEY"):
         print("✅ GEMINI KEY FOUND")
     else:
-        print("⚠️ GEMINI KEY MISSING (AI WILL FALLBACK)")
+        print("⚠️ GEMINI KEY MISSING (fallback mode)")
