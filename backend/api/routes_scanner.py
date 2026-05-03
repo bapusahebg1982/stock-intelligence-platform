@@ -4,10 +4,11 @@ from scanners.beaten_down import scan_market
 router = APIRouter()
 
 @router.get("/beaten-down")
-def beaten_down(max_price: float = None):
+def beaten_down(market: str = "US", max_price: float = None):
 
-    try:
-        data = scan_market(max_price)
-        return {"results": data}
-    except Exception as e:
-        return {"results": [], "error": str(e)}
+    data = scan_market(market, max_price)
+
+    return {
+        "market": market,
+        "results": data
+    }
