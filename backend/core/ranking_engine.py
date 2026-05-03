@@ -1,19 +1,34 @@
-def score_stock(features):
+def score_stock(f):
 
     score = 0
 
-    # value opportunity
-    if features["drawdown"] > 30:
-        score += 40
-    elif features["drawdown"] > 15:
+    # ---------------------------
+    # VALUE (drawdown)
+    # ---------------------------
+    if f["drawdown"] > 20:
+        score += 35
+    elif f["drawdown"] > 10:
         score += 25
+    elif f["drawdown"] > 5:
+        score += 15
 
-    # stability
-    if features["volatility"] < 3:
-        score += 25
+    # ---------------------------
+    # RECOVERY POTENTIAL
+    # ---------------------------
+    score += f["recovery"] * 0.5
 
-    # momentum
-    if features["momentum"] > 0:
-        score += 20
+    # ---------------------------
+    # STABILITY
+    # ---------------------------
+    if f["volatility"] < 3:
+        score += 15
 
-    return min(score, 100)
+    # ---------------------------
+    # TREND QUALITY
+    # ---------------------------
+    if f["trend"] > 0:
+        score += 15
+    else:
+        score -= 10
+
+    return round(min(100, score), 2)
