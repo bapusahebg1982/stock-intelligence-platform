@@ -1,25 +1,13 @@
-from fastapi import APIRouter, Query
-from scanners.bloomberg_engine import run_bloomberg_scan
+from fastapi import APIRouter
+from scanners.production_engine import scan_market
 
 router = APIRouter()
 
 
 @router.get("/bloomberg/opportunities")
-def opportunities(
-    market: str = "US",
-    max_price: float = None
-):
+def opportunities(market: str = "US", max_price: float = None):
 
-    data = run_bloomberg_scan(market, max_price)
-
-    # 🔥 CRITICAL FIX: ALWAYS RETURN SOMETHING
-    if not data:
-        return {
-            "market": market,
-            "count": 0,
-            "results": [],
-            "message": "No scan results - universe or price filter too strict"
-        }
+    data = scan_market(market, max_price)
 
     return {
         "market": market,
