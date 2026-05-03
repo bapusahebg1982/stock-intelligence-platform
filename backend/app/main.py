@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # 🔥 IMPORTANT: import router correctly
 from api.routes_bloomberg import router as bloomberg_router
-
+app.include_router(bloomberg_router)
 app = FastAPI()
 
 # ---------------------------
