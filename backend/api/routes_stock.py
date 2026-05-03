@@ -1,17 +1,20 @@
 from fastapi import APIRouter
 from core.stock_analyzer import analyze_stock
+from core.ticker_resolver import resolve_ticker
 
 router = APIRouter()
 
-@router.get("/analyze/{ticker}")
-def analyze(ticker: str):
+@router.get("/analyze/{query}")
+def analyze(query: str):
+
+    ticker = resolve_ticker(query)
+
+    if not ticker:
+        return {
+            "error": "Ticker not found"
+        }
 
     result = analyze_stock(ticker)
-
-    if not result:
-        return {
-            "ticker": ticker,
-            "error": "No data returned"
-        }
+    result["resolved_ticker"] = ticker
 
     return result
