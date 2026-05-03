@@ -1,16 +1,28 @@
-import random
+def compute_features(price, peak):
 
+    # ---------------------------
+    # FIX 1: VALIDATE PEAK
+    # ---------------------------
+    if peak < price:
+        peak = price * 1.2  # assume recent high above current
 
-def compute_features(price, history_peak):
+    # ---------------------------
+    # DRAW DOWN (ALWAYS POSITIVE)
+    # ---------------------------
+    drawdown = ((peak - price) / peak) * 100
 
-    drawdown = ((history_peak - price) / history_peak) * 100
+    # ---------------------------
+    # VOLATILITY (SIMPLIFIED)
+    # ---------------------------
+    volatility = min(5, max(1, drawdown / 10))
 
-    volatility = random.uniform(1, 5)
-
-    momentum = random.uniform(-2, 3)
+    # ---------------------------
+    # MOMENTUM (BASIC SIGNAL)
+    # ---------------------------
+    momentum = 1 if drawdown > 20 else -1
 
     return {
         "drawdown": round(drawdown, 2),
         "volatility": round(volatility, 2),
-        "momentum": round(momentum, 2)
+        "momentum": momentum
     }
