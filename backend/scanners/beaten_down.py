@@ -1,16 +1,16 @@
 import yfinance as yf
+from core.intelligence_engine import generate_beaten_insight
 
-# 🔥 dynamic universe (expand later with DB)
+
 US_UNIVERSE = ["AAPL", "MSFT", "AMD", "NVDA", "TSLA", "META"]
 INDIA_UNIVERSE = ["RELIANCE.NS", "INFY.NS", "TCS.NS", "HDFCBANK.NS"]
 
-UNIVERSE = US_UNIVERSE + INDIA_UNIVERSE
 
-
-def get_drawdown(stock):
+def analyze_stock(ticker):
 
     try:
-        hist = stock.history(period="1y")
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period="6mo")
 
         if hist.empty:
             return None
@@ -20,46 +20,50 @@ def get_drawdown(stock):
 
         drawdown = ((current - high) / high) * 100
 
-        return current, round(drawdown, 2)
+        # 🔻 threshold
+        if drawdown > -15:
+            return None
+
+        # 🕒 timeframe (approx)
+        peak_date = hist["High"].idxmax()
+        timeframe = str(peak_date.date())
+
+        insight = generate_beaten_insight(
+            ticker, round(current, 2), round(drawdown, 2), timeframe
+        )
+
+        return {
+            "ticker": ticker,
+            "price": round(current, 2),
+            "drawdown_pct": round(drawdown, 2),
+            "since": timeframe,
+            "reason_drop": insight["reason_drop"],
+            "reason_opportunity": insight["reason_opportunity"],
+            "confidence": insight["confidence"]
+        }
 
     except:
         return None
 
 
-def scan_market(max_price=None):
+def scan_market(market="US", max_price=None):
+
+    universe = US_UNIVERSE if market == "US" else INDIA_UNIVERSE
 
     results = []
 
-    for ticker in UNIVERSE:
+    for ticker in universe:
 
-        try:
-            stock = yf.Ticker(ticker)
+        data = analyze_stock(ticker)
 
-            data = get_drawdown(stock)
-
-            if not data:
-                continue
-
-            price, drawdown = data
-
-            # 🔻 only beaten-down
-            if drawdown > -15:
-                continue
-
-            # 🎯 price filter
-            if max_price and price > max_price:
-                continue
-
-            results.append({
-                "ticker": ticker,
-                "price": round(price, 2),
-                "drawdown_pct": drawdown
-            })
-
-        except:
+        if not data:
             continue
 
-    # 🔥 sort most beaten-down first
+        if max_price and data["price"] > max_price:
+            continue
+
+        results.append(data)
+
     results.sort(key=lambda x: x["drawdown_pct"])
 
-    return results[:20]
+    return results
