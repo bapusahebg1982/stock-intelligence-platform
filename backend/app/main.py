@@ -1,12 +1,14 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# 🔥 IMPORTANT: import router correctly
+from api.routes_bloomberg import router as bloomberg_router
+
 app = FastAPI()
 
-# -----------------------------
-# CORS (VERY IMPORTANT)
-# -----------------------------
+# ---------------------------
+# CORS (frontend access)
+# ---------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,62 +17,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -----------------------------
-# SAFE ROUTER IMPORTS
-# -----------------------------
-try:
-    from api.routes_stock import router as stock_router
-    app.include_router(stock_router)
-    print("✅ stock router loaded")
-except Exception as e:
-    print("❌ stock router failed:", e)
-
-try:
-    from api.routes_sector import router as sector_router
-    app.include_router(sector_router)
-    print("✅ sector router loaded")
-except Exception as e:
-    print("❌ sector router failed:", e)
-
-try:
-    from api.routes_scanner import router as scanner_router
-    app.include_router(scanner_router)
-    print("✅ scanner router loaded")
-except Exception as e:
-    print("❌ scanner router failed:", e)
-
-try:
-    from api.routes_news import router as news_router
-    app.include_router(news_router)
-    print("✅ news router loaded")
-except Exception as e:
-    print("❌ news router failed:", e)
-
-# ✅ NEW SEARCH ROUTER
-try:
-    from api.routes_search import router as search_router
-    app.include_router(search_router)
-    print("✅ search router loaded")
-except Exception as e:
-    print("❌ search router failed:", e)
+# ---------------------------
+# ROUTES (THIS WAS MOST LIKELY MISSING)
+# ---------------------------
+app.include_router(bloomberg_router, prefix="/bloomberg")
 
 
-# -----------------------------
-# ROOT + HEALTH
-# -----------------------------
+# ---------------------------
+# HEALTH CHECK (DEBUGGING)
+# ---------------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
+# ---------------------------
+# ROOT
+# ---------------------------
 @app.get("/")
 def root():
-    return {"status": "running"}
-
-@app.on_event("startup")
-def startup_log():
-    print("🚀 APP STARTED")
-
-    if os.getenv("GEMINI_API_KEY"):
-        print("✅ GEMINI KEY FOUND")
-    else:
-        print("⚠️ GEMINI KEY MISSING (fallback mode)")
+    return {"message": "Bloomberg API running"}
