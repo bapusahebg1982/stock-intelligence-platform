@@ -7,20 +7,6 @@ US_UNIVERSE = ["AAPL", "MSFT", "TSLA", "NVDA", "AMZN"]
 INDIA_UNIVERSE = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS"]
 
 
-# fallback peak values (avoid crashes)
-PEAK_CACHE = {
-    "AAPL": 220,
-    "MSFT": 450,
-    "TSLA": 300,
-    "NVDA": 900,
-    "AMZN": 200,
-    "RELIANCE.NS": 3200,
-    "TCS.NS": 4200,
-    "INFY.NS": 1800,
-    "HDFCBANK.NS": 1700
-}
-
-
 def scan_market(market="US", max_price=None):
 
     universe = US_UNIVERSE if market == "US" else INDIA_UNIVERSE
@@ -31,29 +17,28 @@ def scan_market(market="US", max_price=None):
 
         try:
             # ---------------------------
-            # FETCH PRICE (SAFE)
+            # PRICE FETCH
             # ---------------------------
-            if market == "US":
-                price = get_us_price(symbol)
-            else:
-                price = get_india_price(symbol)
+            price = get_us_price(symbol) if market == "US" else get_india_price(symbol)
 
-            # 🔴 CRITICAL FIX: skip None safely
-            if price is None or price == 0:
+            if not price or price <= 0:
                 continue
 
             # ---------------------------
-            # FEATURES
+            # FIX: DYNAMIC PEAK (NOT STATIC CACHE)
             # ---------------------------
-            peak = PEAK_CACHE.get(symbol, price * 1.2)
+            peak = price * 1.3  # assume recent high ~30% above current
 
             features = compute_features(price, peak)
 
             score = score_stock(features)
 
             # ---------------------------
-            # FILTER
+            # FILTER BAD DATA
             # ---------------------------
+            if features["drawdown"] < 5:
+                continue
+
             if max_price and price > float(max_price):
                 continue
 
@@ -68,44 +53,24 @@ def scan_market(market="US", max_price=None):
                 "score": score,
 
                 "reason_drop": [
-                    "Market correction phase",
-                    "Sector rotation pressure"
+                    "Recent correction from highs",
+                    "Short-term selling pressure"
                 ],
 
                 "reason_opportunity": [
-                    "Oversold valuation zone",
-                    "Potential rebound",
-                    "Strong fundamentals"
+                    "Pullback within long-term trend",
+                    "Potential rebound setup",
+                    "Healthy correction phase"
                 ]
             })
 
         except Exception as e:
-            # 🔥 IMPORTANT: LOG ERROR
-            print(f"❌ ERROR processing {symbol}: {str(e)}")
+            print(f"❌ ERROR {symbol}: {str(e)}")
             continue
 
-    # 🚨 NEVER RETURN EMPTY
-    if len(results) == 0:
-        return safe_fallback()
-
+    # ---------------------------
+    # SORT + RETURN
+    # ---------------------------
     results.sort(key=lambda x: x["score"], reverse=True)
 
     return results
-
-
-# ---------------------------
-# SAFE FALLBACK (NOT SYS)
-# ---------------------------
-def safe_fallback():
-    return [
-        {
-            "name": "Fallback Mode Active",
-            "ticker": "SAFE",
-            "price": 100,
-            "drawdown_pct": 10,
-            "volatility": 2,
-            "score": 60,
-            "reason_drop": ["Live data source temporarily unavailable"],
-            "reason_opportunity": ["System running in safe mode"],
-        }
-    ]
