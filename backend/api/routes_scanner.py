@@ -1,29 +1,13 @@
-from fastapi import APIRouter, Query
-
+from fastapi import APIRouter
 from scanners.beaten_down import scan_market
-from core.universe_cache import get_universe
 
 router = APIRouter()
 
-
 @router.get("/beaten-down")
-def beaten_down(
-    market: str = "US",
-    max_price: float = None
-):
+def beaten_down(max_price: float = None):
 
-    universe = get_universe()
-
-    tickers = universe.get(market.upper(), [])
-
-    data = scan_market(
-        universe=tickers,
-        max_price=max_price,
-        market=market
-    )
-
-    return {
-        "market": market,
-        "count": len(data),
-        "results": data
-    }
+    try:
+        data = scan_market(max_price)
+        return {"results": data}
+    except Exception as e:
+        return {"results": [], "error": str(e)}
