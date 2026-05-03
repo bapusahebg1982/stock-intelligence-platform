@@ -1,39 +1,65 @@
 import yfinance as yf
-from core.ai_engine import generate_beaten_reason
+
+# 🔥 dynamic universe (expand later with DB)
+US_UNIVERSE = ["AAPL", "MSFT", "AMD", "NVDA", "TSLA", "META"]
+INDIA_UNIVERSE = ["RELIANCE.NS", "INFY.NS", "TCS.NS", "HDFCBANK.NS"]
+
+UNIVERSE = US_UNIVERSE + INDIA_UNIVERSE
 
 
-def scan_market(universe):
+def get_drawdown(stock):
+
+    try:
+        hist = stock.history(period="1y")
+
+        if hist.empty:
+            return None
+
+        high = hist["High"].max()
+        current = hist["Close"].iloc[-1]
+
+        drawdown = ((current - high) / high) * 100
+
+        return current, round(drawdown, 2)
+
+    except:
+        return None
+
+
+def scan_market(max_price=None):
 
     results = []
 
-    for ticker in universe:
+    for ticker in UNIVERSE:
 
         try:
             stock = yf.Ticker(ticker)
-            hist = stock.history(period="1y")
 
-            if hist.empty:
+            data = get_drawdown(stock)
+
+            if not data:
                 continue
 
-            high = hist["Close"].max()
-            current = hist["Close"].iloc[-1]
+            price, drawdown = data
 
-            drawdown = ((high - current) / high) * 100
-
-            if drawdown < 20:
+            # 🔻 only beaten-down
+            if drawdown > -15:
                 continue
 
-            data = {
+            # 🎯 price filter
+            if max_price and price > max_price:
+                continue
+
+            results.append({
                 "ticker": ticker,
-                "price": current,
-                "drawdown_pct": round(drawdown, 2)
-            }
-
-            data["reason"] = generate_beaten_reason(data)
-
-            results.append(data)
+                "price": round(price, 2),
+                "drawdown_pct": drawdown
+            })
 
         except:
             continue
 
-    return sorted(results, key=lambda x: x["drawdown_pct"], reverse=True)
+    # 🔥 sort most beaten-down first
+    results.sort(key=lambda x: x["drawdown_pct"])
+
+    return results[:20]
