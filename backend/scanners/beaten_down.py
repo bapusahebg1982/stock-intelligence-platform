@@ -1,9 +1,15 @@
 import yfinance as yf
-from core.intelligence_engine import generate_beaten_insight
 
+# 🔥 Expanded universe (still lightweight, but better coverage)
+US_UNIVERSE = [
+    "AAPL","MSFT","AMD","NVDA","TSLA","META",
+    "F","INTC","PLTR","SOFI","NIO","LCID","RIVN"
+]
 
-US_UNIVERSE = ["AAPL", "MSFT", "AMD", "NVDA", "TSLA", "META"]
-INDIA_UNIVERSE = ["RELIANCE.NS", "INFY.NS", "TCS.NS", "HDFCBANK.NS"]
+INDIA_UNIVERSE = [
+    "RELIANCE.NS","INFY.NS","TCS.NS","HDFCBANK.NS",
+    "ITC.NS","SBIN.NS","TATAMOTORS.NS","ZOMATO.NS"
+]
 
 
 def analyze_stock(ticker):
@@ -20,26 +26,22 @@ def analyze_stock(ticker):
 
         drawdown = ((current - high) / high) * 100
 
-        # 🔻 threshold
-        if drawdown > -15:
+        # Only keep beaten-down
+        if drawdown > -10:
             return None
 
-        # 🕒 timeframe (approx)
+        # 🔥 timeframe
         peak_date = hist["High"].idxmax()
-        timeframe = str(peak_date.date())
 
-        insight = generate_beaten_insight(
-            ticker, round(current, 2), round(drawdown, 2), timeframe
-        )
+        # 🔥 simple opportunity score
+        score = abs(drawdown)
 
         return {
             "ticker": ticker,
             "price": round(current, 2),
             "drawdown_pct": round(drawdown, 2),
-            "since": timeframe,
-            "reason_drop": insight["reason_drop"],
-            "reason_opportunity": insight["reason_opportunity"],
-            "confidence": insight["confidence"]
+            "since": str(peak_date.date()),
+            "score": round(score, 2)
         }
 
     except:
@@ -52,18 +54,23 @@ def scan_market(market="US", max_price=None):
 
     results = []
 
+    # 🔥 STEP 1: scan EVERYTHING
     for ticker in universe:
-
         data = analyze_stock(ticker)
 
-        if not data:
-            continue
+        if data:
+            results.append(data)
 
-        if max_price and data["price"] > max_price:
-            continue
+    # 🔥 STEP 2: rank FIRST (best opportunities)
+    results.sort(key=lambda x: x["score"], reverse=True)
 
-        results.append(data)
+    # 🔥 STEP 3: apply filter AFTER ranking
+    if max_price:
+        results = [r for r in results if r["price"] <= max_price]
 
-    results.sort(key=lambda x: x["drawdown_pct"])
+    # 🔥 STEP 4: if filter removes everything → fallback
+    if not results:
+        # return top opportunities anyway (no filter)
+        results = sorted(results, key=lambda x: x["score"], reverse=True)
 
-    return results
+    return results[:20]
