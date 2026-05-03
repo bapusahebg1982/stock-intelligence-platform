@@ -1,4 +1,4 @@
-from core.data_provider import get_us_price, get_india_price
+from core.data_provider import get_price_and_history
 from core.feature_engine import compute_features
 from core.ranking_engine import score_stock
 
@@ -16,26 +16,19 @@ def scan_market(market="US", max_price=None):
     for symbol in universe:
 
         try:
-            # ---------------------------
-            # PRICE FETCH
-            # ---------------------------
-            price = get_us_price(symbol) if market == "US" else get_india_price(symbol)
+            price, peak = get_price_and_history(symbol)
 
-            if not price or price <= 0:
+            if not price or not peak:
                 continue
-
-            # ---------------------------
-            # FIX: DYNAMIC PEAK (NOT STATIC CACHE)
-            # ---------------------------
-            peak = price * 1.3  # assume recent high ~30% above current
 
             features = compute_features(price, peak)
 
+            if not features:
+                continue
+
             score = score_stock(features)
 
-            # ---------------------------
-            # FILTER BAD DATA
-            # ---------------------------
+            # FILTER
             if features["drawdown"] < 5:
                 continue
 
@@ -53,24 +46,21 @@ def scan_market(market="US", max_price=None):
                 "score": score,
 
                 "reason_drop": [
-                    "Recent correction from highs",
-                    "Short-term selling pressure"
+                    "Recent decline from 3-month highs",
+                    "Short-term market pressure"
                 ],
 
                 "reason_opportunity": [
-                    "Pullback within long-term trend",
-                    "Potential rebound setup",
-                    "Healthy correction phase"
+                    "Trading below recent peak",
+                    "Potential mean reversion",
+                    "Opportunity if fundamentals intact"
                 ]
             })
 
         except Exception as e:
-            print(f"❌ ERROR {symbol}: {str(e)}")
+            print(f"❌ ERROR {symbol}: {e}")
             continue
 
-    # ---------------------------
-    # SORT + RETURN
-    # ---------------------------
     results.sort(key=lambda x: x["score"], reverse=True)
 
     return results
