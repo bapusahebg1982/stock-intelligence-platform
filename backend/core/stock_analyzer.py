@@ -8,39 +8,23 @@ def analyze_stock(ticker):
         stock = yf.Ticker(ticker)
         info = stock.info or {}
 
-        price = info.get("currentPrice")
+        price = info.get("currentPrice") or info.get("regularMarketPrice")
 
-        fundamentals = {
-            "pe": info.get("trailingPE"),
-            "revenue_growth": info.get("revenueGrowth")
-        }
-
-        technicals = {
-            "rsi": None,
-            "trend": "Unknown"
-        }
-
-        high_low = {
-            "1y_high": info.get("fiftyTwoWeekHigh"),
-            "1y_low": info.get("fiftyTwoWeekLow")
-        }
+        if not price:
+            return {
+                "ticker": ticker,
+                "error": "Invalid ticker or no price data"
+            }
 
         ai_analysis = generate_stock_analysis({
             "ticker": ticker,
-            "price": price,
-            "pe": fundamentals["pe"],
-            "growth": fundamentals["revenue_growth"],
-            "trend": technicals["trend"]
+            "price": price
         })
 
         return {
             "ticker": ticker,
             "price": price,
-            "fundamentals": fundamentals,
-            "technicals": technicals,
-            "high_low": high_low,
-            "ai_analysis": ai_analysis,
-            "score": 50
+            "ai_analysis": ai_analysis
         }
 
     except Exception as e:
