@@ -4,53 +4,70 @@ import difflib
 
 router = APIRouter()
 
-# 🔥 Expanded base universe (important for India)
+# ✅ REALISTIC UNIVERSAL STOCK MAP (India + US core)
 STOCK_DB = [
+    # US
     {"name": "Apple", "ticker": "AAPL"},
     {"name": "Microsoft", "ticker": "MSFT"},
+    {"name": "Amazon", "ticker": "AMZN"},
     {"name": "Tesla", "ticker": "TSLA"},
-    {"name": "Infosys", "ticker": "INFY.NS"},
-    {"name": "Reliance Industries", "ticker": "RELIANCE.NS"},
-    {"name": "TCS", "ticker": "TCS.NS"},
+    {"name": "NVIDIA", "ticker": "NVDA"},
+
+    # India banks
     {"name": "HDFC Bank", "ticker": "HDFCBANK.NS"},
-    {"name": "Canara Bank", "ticker": "CANBK.NS"},
     {"name": "ICICI Bank", "ticker": "ICICIBANK.NS"},
     {"name": "State Bank of India", "ticker": "SBIN.NS"},
-    {"name": "Delta Corp", "ticker": "DELTACORP.NS"},
+    {"name": "Axis Bank", "ticker": "AXISBANK.NS"},
+    {"name": "Bandhan Bank", "ticker": "BANDHANBNK.NS"},
+
+    # others
+    {"name": "Reliance Industries", "ticker": "RELIANCE.NS"},
+    {"name": "TCS", "ticker": "TCS.NS"},
 ]
 
 
-def fuzzy_match(query, choices, key="name"):
-    names = [c[key] for c in choices]
-    matches = difflib.get_close_matches(query, names, n=5, cutoff=0.3)
+def normalize(text):
+    return text.lower().strip()
 
-    return [
-        c for c in choices if c[key] in matches
-    ]
+
+def score_match(query, name):
+    q = normalize(query)
+    n = normalize(name)
+
+    if q == n:
+        return 100
+    if q in n:
+        return 80
+    if any(word in n for word in q.split()):
+        return 60
+    return 0
 
 
 @router.get("/search")
 def search(q: str):
 
-    q_lower = q.lower()
+    if not q:
+        return {"results": []}
 
-    results = []
+    q_norm = normalize(q)
 
-    # 🔹 STEP 1: direct partial match
+    scored = []
+
+    # 🔥 STEP 1: score ALL matches (no early return)
     for stock in STOCK_DB:
-        if q_lower in stock["name"].lower() or q_lower in stock["ticker"].lower():
-            results.append(stock)
+        score = score_match(q_norm, stock["name"])
 
-    if results:
-        return {"results": results[:10]}
+        if score > 0:
+            scored.append({**stock, "score": score})
 
-    # 🔹 STEP 2: fuzzy match (handles “canara bank”, “infosyss” etc.)
-    fuzzy = fuzzy_match(q_lower, STOCK_DB)
+    # 🔥 STEP 2: sort by BEST match
+    scored.sort(key=lambda x: x["score"], reverse=True)
 
-    if fuzzy:
-        return {"results": fuzzy}
+    # 🔥 STEP 3: strict top match only if strong confidence
+    if scored and scored[0]["score"] >= 60:
+        return {"results": scored[:5]}
 
-    # 🔹 STEP 3: try Yahoo Finance (ticker guess)
+    # 🔥 STEP 4: fallback ticker guessing
     try:
         guess = q.upper().replace(" ", "")
 
@@ -64,9 +81,7 @@ def search(q: str):
 
             if name:
                 return {
-                    "results": [
-                        {"name": name, "ticker": ticker}
-                    ]
+                    "results": [{"name": name, "ticker": ticker}]
                 }
 
     except:
