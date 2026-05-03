@@ -1,21 +1,33 @@
 import json
 import os
 
-UNIVERSE_FILE = "universe.json"
+FILE = "universe.json"
 
 
 def load_universe():
 
-    if not os.path.exists(UNIVERSE_FILE):
-        return {"US": [], "INDIA": []}
+    # 🔥 HARD FALLBACK if file missing
+    if not os.path.exists(FILE):
+        return {
+            "US": [
+                {"name": "Apple", "ticker": "AAPL"},
+                {"name": "Microsoft", "ticker": "MSFT"},
+                {"name": "Tesla", "ticker": "TSLA"}
+            ],
+            "INDIA": [
+                {"name": "Reliance", "ticker": "RELIANCE.NS"},
+                {"name": "TCS", "ticker": "TCS.NS"},
+                {"name": "HDFC Bank", "ticker": "HDFCBANK.NS"}
+            ]
+        }
 
-    with open(UNIVERSE_FILE, "r") as f:
+    with open(FILE, "r") as f:
         return json.load(f)
 
 
 def get_us():
-    return load_universe().get("US", [])
+    return load_universe()["US"]
 
 
 def get_india():
-    return load_universe().get("INDIA", [])
+    return load_universe()["INDIA"]
